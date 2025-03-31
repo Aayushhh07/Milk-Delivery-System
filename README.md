@@ -30,13 +30,13 @@ This is a **full-stack milk delivery system** where users can order milk and dai
 ## 🔧 Installation & Setup
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/your-username/milk-delivery-system.git
-   cd milk-delivery-system
+   git clone https://github.com/Aayushhh07/Milk-Delivery-System.git
+   cd Milk-Delivery-System
    ```
 
 2. **Backend Setup**
    ```bash
-   cd backend
+   cd Backend
    npm install
    npm start
    ```
@@ -62,8 +62,6 @@ This is a **full-stack milk delivery system** where users can order milk and dai
 - **Backend:** Render/Heroku
 - **Database:** MongoDB Atlas
 
-## 📜 License
-This project is licensed under the MIT License.
 
 ## 🤝 Contributions
 Contributions are welcome! Feel free to fork and submit pull requests.
