@@ -2,7 +2,7 @@ import React from 'react'
 import Navbar from '../shared/navbar'
 import HeroSection from './HeroSection'
 import Footer from '../shared/Footer'
-import ProductsCatalogue from './ProductsCatalogue'
+import ProductsCatalogue from './ProductCatalogue'
 import TrustSection from './TrustSection'
 
 const Home = () => {
@@ -10,7 +10,7 @@ const Home = () => {
     <div>
       <Navbar />
       <HeroSection />
-      <ProductsCatalogue/>
+      <ProductsCatalogue />
       <TrustSection/>
       <Footer />
     </div>

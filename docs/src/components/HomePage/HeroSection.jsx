@@ -1,7 +1,12 @@
-import React from "react";
+import React, { useEffect } from "react";
+import AOS from "aos";
+import "aos/dist/aos.css";
 
 
 const HeroSection = () => {
+  useEffect(() => {
+      AOS.init({ duration: 1000, once: true });
+    }, []);
   return (
     <div className="relative w-full h-[90vh] flex items-center justify-center bg-[#00B86C] text-white">
       <div className="container mx-auto flex flex-col md:flex-row items-center px-6 md:px-12">
