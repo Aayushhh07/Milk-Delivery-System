@@ -41,6 +41,12 @@ const SubscriptionSchema = new mongoose.Schema({
     enum: ["active", "paused", "expired"],
     default: "active",
   },
+  // New field to indicate why the subscription was paused
+  pauseReason: {
+    type: String,
+    enum: ["insufficient_balance", "user_paused", "none"],
+    default: "none",
+  },
 });
 
-export const Subscription = mongoose.model("Subscription", SubscriptionSchema);
+export default mongoose.model("Subscription", SubscriptionSchema);
