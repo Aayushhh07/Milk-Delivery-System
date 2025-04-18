@@ -1,18 +1,18 @@
 import express from "express";
-import { addProduct , getAllProducts , getProductById , updateProduct , deleteProduct , getProductsByCategory , searchProducts } from "../controllers/product_controller.js";
+import { upload } from "../middlewares/upload_middleware.js";
+import { addProduct, getAllProducts, getProductById, updateProduct, deleteProduct, getProductsByCategory, searchProducts } from "../controllers/products_controller.js";
+import { verifyAdmin } from "../middlewares/auth_middleware.js";
 
 const router = express.Router();
 
-
-router.post("/admin/products/add", addProduct); // Route to add a new product (only admin can access)
-router.get("/products", getAllProducts); // Route to get all products with optional filters
-router.get("/products/:id", getProductById); // Route to get a single product by its ID
-router.put("/products/:id", updateProduct); // Route to update a product by its ID (only admin can access)
-router.delete("/products/:id", deleteProduct); // Route to delete a product by its ID (only admin can access)
-router.get("/products/category/:category", getProductsByCategory); // Route to get products by category
-router.get("/products/category/:category/:subcategory", getProductsByCategory); // Route to get products by category and subcategory
-router.get("/products/search", searchProducts); // Route to search products by name or description
-
+// Admin routes
+router.post("/add", verifyAdmin, upload.single('productImage'), addProduct);
+router.get("/", getAllProducts);
+router.get("/:id", getProductById);
+router.put("/:id", verifyAdmin, upload.single('productImage'), updateProduct);
+router.delete("/:id", verifyAdmin, deleteProduct);
+router.get("/category/:category", getProductsByCategory);
+router.get("/search", searchProducts);
 
 export default router;
 

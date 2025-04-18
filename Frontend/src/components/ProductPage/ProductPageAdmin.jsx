@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { ADMIN_API_END_POINT } from "../../utils/constant";
 import Navbar from "../shared/Navbar";
 import AdminProductCard from "./ProductCardAdmin";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -6,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const categoriesData = [
   { id: 1, name: "Milk", icon: "🥛" },
@@ -27,7 +30,7 @@ const initialProducts = {
 
 const AdminProductPage = () => {
   const [selectedCategory, setSelectedCategory] = useState(1);
-  const [products, setProducts] = useState(initialProducts);
+  const [products, setProducts] = useState({});
   const [isOpen, setIsOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [newProduct, setNewProduct] = useState({
@@ -39,12 +42,127 @@ const AdminProductPage = () => {
     category: "Milk",
     availability: true,
   });
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
-  const removeProduct = (id) => {
-    setProducts({
-      ...products,
-      [selectedCategory]: products[selectedCategory].filter((product) => product.id !== id),
-    });
+  // Add axios config with authorization
+  const axiosConfig = {
+    headers: {
+      'Authorization': localStorage.getItem('adminToken')
+    }
+  };
+
+  // Fetch products when component mounts
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get(`${ADMIN_API_END_POINT}/products`, axiosConfig);
+      // Group products by category
+      const groupedProducts = response.data.products.reduce((acc, product) => {
+        const categoryId = categoriesData.find(cat => cat.name === product.category)?.id;
+        if (categoryId) {
+          if (!acc[categoryId]) acc[categoryId] = [];
+          acc[categoryId].push({
+            ...product,
+            id: product._id,
+            image: product.images[0]
+          });
+        }
+        return acc;
+      }, {});
+      setProducts(groupedProducts);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+      
+      // Update newProduct state with the preview URL
+      setNewProduct(prev => ({
+        ...prev,
+        images: [previewUrl]
+      }));
+    }
+  };
+
+  const handleAddOrUpdateProduct = async () => {
+    try {
+      const formData = new FormData();
+      formData.append('name', newProduct.name);
+      formData.append('description', newProduct.description);
+      formData.append('pricePerDay', newProduct.pricePerDay);
+      formData.append('quantity', newProduct.quantity);
+      formData.append('category', newProduct.category);
+      formData.append('availability', newProduct.availability);
+      
+      if (imageFile) {
+        formData.append('productImage', imageFile);
+      }
+
+      const config = {
+        headers: {
+          'Authorization': localStorage.getItem('adminToken'),
+          'Content-Type': 'multipart/form-data'
+        }
+      };
+
+      if (editMode) {
+        await axios.put(
+          `${ADMIN_API_END_POINT}/products/${newProduct.id}`,
+          formData,
+          config
+        );
+      } else {
+        await axios.post(
+          `${ADMIN_API_END_POINT}/products/add`,
+          formData,
+          config
+        );
+      }
+
+      // Refresh products list
+      await fetchProducts();
+      
+      // Reset form
+      setIsOpen(false);
+      setEditMode(false);
+      setImageFile(null);
+      setImagePreview(null);
+      setNewProduct({
+        name: "",
+        description: "",
+        pricePerDay: "",
+        images: [""],
+        quantity: "",
+        category: "Milk",
+        availability: true,
+      });
+
+      toast.success(`Product ${editMode ? 'updated' : 'added'} successfully`);
+    } catch (error) {
+      console.error("Error saving product:", error);
+      toast.error(error.response?.data?.message || "Error saving product");
+    }
+  };
+
+  const removeProduct = async (id) => {
+    try {
+      await axios.delete(`${ADMIN_API_END_POINT}/products/${id}`, axiosConfig);
+      await fetchProducts();
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert(error.response?.data?.message || "Error deleting product");
+    }
   };
 
   const handleEdit = (product) => {
@@ -64,48 +182,6 @@ const AdminProductPage = () => {
 
   const handleCategoryChange = (value) => {
     setNewProduct((prev) => ({ ...prev, category: value }));
-  };
-
-  const handleAddOrUpdateProduct = () => {
-    const categoryId = categoriesData.find((cat) => cat.name === newProduct.category)?.id;
-
-    if (!categoryId) return;
-
-    if (editMode) {
-      setProducts({
-        ...products,
-        [categoryId]: products[categoryId].map((product) =>
-          product.id === newProduct.id ? { ...newProduct, image: newProduct.images[0] } : product
-        ),
-      });
-    } else {
-      const updated = {
-        ...products,
-        [categoryId]: [
-          ...(products[categoryId] || []),
-          {
-            ...newProduct,
-            id: Date.now(),
-            image: newProduct.images[0] || "default.jpg",
-          },
-        ],
-      };
-      setProducts(updated);
-    }
-
-    setIsOpen(false);
-    setEditMode(false);
-    setNewProduct({
-      name: "",
-      description: "",
-      pricePerDay: "",
-      images: [""],
-      quantity: "",
-      category: "Milk",
-      availability: true,
-    });
-
-    setSelectedCategory(categoryId);
   };
 
   return (
@@ -164,7 +240,27 @@ const AdminProductPage = () => {
                   <Textarea name="description" value={newProduct.description} onChange={handleFormChange} placeholder="Description" />
                   <Input name="pricePerDay" type="number" value={newProduct.pricePerDay} onChange={handleFormChange} placeholder="Price Per Day" />
                   <Input name="quantity" value={newProduct.quantity} onChange={handleFormChange} placeholder="Quantity" />
-                  <Input name="images" value={newProduct.images[0]} onChange={(e) => setNewProduct((prev) => ({ ...prev, images: [e.target.value] }))} placeholder="Image URL" />
+                  
+                  {/* Image upload section */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Product Image</label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+                    />
+                    {imagePreview && (
+                      <div className="mt-2">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-32 h-32 object-cover rounded-md"
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   <Select value={newProduct.category} onValueChange={handleCategoryChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select Category" />
