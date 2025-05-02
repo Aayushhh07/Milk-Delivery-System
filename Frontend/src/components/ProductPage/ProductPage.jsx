@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 // Add backend base URL - correct URL for accessing uploaded images
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = 'https://milk-delivery-system-backend.onrender.com';
 
 const categoriesData = [
   { id: 1, name: "Milk", icon: "🥛" },

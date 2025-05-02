@@ -7,7 +7,7 @@ import { USER_PRODUCTS_API_END_POINT, ADMIN_PRODUCTS_API_END_POINT } from "../..
 import { toast } from "sonner";
 
 // Add backend base URL for accessing uploaded images
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = 'https://milk-delivery-system-backend.onrender.com';
 
 const ProductsCatalogue = ({ isAdmin = false }) => {
   const scrollRef = useRef(null);

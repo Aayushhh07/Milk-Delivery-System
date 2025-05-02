@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 // Define backend URL
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = 'https://milk-delivery-system-backend.onrender.com';
 // Fix default image path - point to an image that definitely exists
 const defaultImage = "https://placehold.co/200x200?text=No+Image";
 

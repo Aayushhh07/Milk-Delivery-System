@@ -3,7 +3,7 @@ import { Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Define backend URL
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = 'https://milk-delivery-system-backend.onrender.com';
 // Fix default image path - point to an image that definitely exists
 const defaultImage = "https://placehold.co/200x200?text=No+Image";
 

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 // Add backend base URL for accessing uploaded images
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = 'https://milk-delivery-system-backend.onrender.com';
 
 const categoriesData = [
   { id: 1, name: "Milk", icon: "🥛" },
@@ -76,7 +76,7 @@ const AdminProductPage = () => {
   const checkServerHealth = async () => {
     try {
       console.log('Checking server health...');
-      const response = await axios.get('http://localhost:5000/health');
+      const response = await axios.get('https://milk-delivery-system-backend.onrender.com/health');
       console.log('Health check response:', response.data);
       return response.data.success && response.data.data?.status === 'ok';
     } catch (error) {
@@ -105,7 +105,7 @@ const AdminProductPage = () => {
       }
 
       console.log('Making API request with config:', {
-        url: 'http://localhost:5000/api/v1/admin/products',
+        url: 'https://milk-delivery-system-backend.onrender.com/api/v1/admin/products',
         headers: {
           'Authorization': `Bearer ${token.substring(0, 10)}...`,
           'Accept': 'application/json',
@@ -123,7 +123,7 @@ const AdminProductPage = () => {
       };
 
       try {
-        const response = await axios.get('http://localhost:5000/api/v1/admin/products', config);
+        const response = await axios.get('https://milk-delivery-system-backend.onrender.com/api/v1/admin/products', config);
         
         console.log('API Response:', {
           status: response.status,
