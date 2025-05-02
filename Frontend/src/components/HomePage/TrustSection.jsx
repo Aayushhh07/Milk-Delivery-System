@@ -13,13 +13,13 @@ const TrustSection = () => {
 
   const steps = [
     {
-      icon: Factory,
+      icon: Farm,
       title: "Milk Collection",
       description: "Milk collection from healthy cattle",
       delay: 0,
     },
     {
-      icon: Farm,
+      icon: Factory,
       title: "Quality Testing",
       description: "Quality tested for 100+ common adulterants",
       delay: 200,

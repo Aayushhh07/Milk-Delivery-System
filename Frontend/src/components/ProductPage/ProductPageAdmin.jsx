@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { ADMIN_API_END_POINT } from "../../utils/constant";
+import { ADMIN_PRODUCTS_API_END_POINT } from "../../utils/constant";
 import Navbar from "../shared/Navbar";
 import AdminProductCard from "./ProductCardAdmin";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -9,6 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+
+// Add backend base URL for accessing uploaded images
+const BACKEND_URL = 'http://localhost:5000';
 
 const categoriesData = [
   { id: 1, name: "Milk", icon: "🥛" },
@@ -44,96 +47,248 @@ const AdminProductPage = () => {
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-
-  // Add axios config with authorization
-  const axiosConfig = {
-    headers: {
-      'Authorization': localStorage.getItem('adminToken')
-    }
-  };
+  const [isLoading, setIsLoading] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
   // Fetch products when component mounts
   useEffect(() => {
     fetchProducts();
   }, []);
 
+  // Add token management functions
+  const getAdminToken = () => {
+    const token = localStorage.getItem('adminToken');
+    console.log('Token found in localStorage:', token ? 'Yes' : 'No');
+    if (!token) {
+      console.error('No admin token found in localStorage');
+      window.location.href = '/admin/login';
+      return null;
+    }
+    console.log('Token format:', {
+      length: token.length,
+      startsWith: token.substring(0, 10) + '...',
+      endsWith: '...' + token.substring(token.length - 10)
+    });
+    return token;
+  };
+
+  // Add health check function
+  const checkServerHealth = async () => {
+    try {
+      console.log('Checking server health...');
+      const response = await axios.get('http://localhost:5000/health');
+      console.log('Health check response:', response.data);
+      return response.data.success && response.data.data?.status === 'ok';
+    } catch (error) {
+      console.error('Server health check failed:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: error.config
+      });
+      return false;
+    }
+  };
+
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`${ADMIN_API_END_POINT}/products`, axiosConfig);
-      // Group products by category
-      const groupedProducts = response.data.products.reduce((acc, product) => {
-        const categoryId = categoriesData.find(cat => cat.name === product.category)?.id;
-        if (categoryId) {
-          if (!acc[categoryId]) acc[categoryId] = [];
-          acc[categoryId].push({
-            ...product,
-            id: product._id,
-            image: product.images[0]
-          });
+      // Check server health first
+      const isServerHealthy = await checkServerHealth();
+      if (!isServerHealthy) {
+        toast.error("Backend server is not responding. Please make sure the server is running.");
+        return;
+      }
+
+      const token = getAdminToken();
+      if (!token) {
+        return; // getAdminToken will handle the redirect
+      }
+
+      console.log('Making API request with config:', {
+        url: 'http://localhost:5000/api/v1/admin/products',
+        headers: {
+          'Authorization': `Bearer ${token.substring(0, 10)}...`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
-        return acc;
-      }, {});
-      setProducts(groupedProducts);
+      });
+
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      };
+
+      try {
+        const response = await axios.get('http://localhost:5000/api/v1/admin/products', config);
+        
+        console.log('API Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+          data: response.data
+        });
+
+        if (!response.data?.data?.products) {
+          console.error('Invalid response format:', response.data);
+          setProducts({}); // Set empty products object
+          return;
+        }
+
+        // Group products by category
+        const groupedProducts = response.data.data.products.reduce((acc, product) => {
+          const categoryId = categoriesData.find(cat => cat.name === product.category)?.id;
+          if (categoryId) {
+            if (!acc[categoryId]) acc[categoryId] = [];
+            
+            // Process images to use the backend server URL
+            const processedImages = product.images?.map(img => {
+              console.log(`Processing image path: "${img}"`);
+              
+              if (img && img.startsWith('/uploads/')) {
+                const fullPath = `${BACKEND_URL}${img}`;
+                console.log(`Converted to: "${fullPath}"`);
+                return fullPath;
+              }
+              if (img && img.startsWith('uploads/')) {
+                const fullPath = `${BACKEND_URL}/${img}`;
+                console.log(`Converted to: "${fullPath}"`);
+                return fullPath;
+              }
+              console.log(`Keeping original: "${img}"`);
+              return img;
+            }) || [];
+            
+            acc[categoryId].push({
+              ...product,
+              id: product._id,
+              images: processedImages
+            });
+          }
+          return acc;
+        }, {});
+        
+        console.log('Grouped products with processed images:', groupedProducts);
+        setProducts(groupedProducts);
+      } catch (error) {
+        console.error("API Request Error:", {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          headers: error.response?.headers,
+          config: error.config
+        });
+
+        if (error.response?.status === 401) {
+          console.error('Authentication failed - Token expired or invalid');
+          localStorage.removeItem('adminToken');
+          window.location.href = '/admin/login';
+        } else if (error.response?.status === 403) {
+          console.error('Access forbidden - Insufficient permissions');
+          toast.error("You don't have permission to access this page");
+          window.location.href = '/admin/login';
+        } else if (error.response?.status === 404) {
+          console.error('Endpoint not found');
+          toast.error("The requested resource was not found");
+        } else if (error.response?.status === 500) {
+          console.error('Server error:', error.response.data);
+          toast.error("Server error. Please try again later.");
+        } else if (!error.response) {
+          console.error('Network error - No response from server');
+          toast.error("Could not connect to the server. Please check your connection.");
+        } else {
+          console.error('Unexpected error:', error);
+          toast.error(error.response?.data?.message || "An unexpected error occurred");
+        }
+        setProducts({}); // Set empty products object on error
+      }
     } catch (error) {
-      console.error("Error fetching products:", error);
+      console.error("Error in fetchProducts:", error);
+      toast.error("An unexpected error occurred while fetching products");
+      setProducts({});
     }
   };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      const newImages = files.map(file => URL.createObjectURL(file));
+      setImageFile(files);
+      setImagePreview(newImages);
       
-      // Update newProduct state with the preview URL
       setNewProduct(prev => ({
         ...prev,
-        images: [previewUrl]
+        images: newImages
       }));
     }
   };
 
   const handleAddOrUpdateProduct = async () => {
+    if (!validateForm()) {
+      toast.error("Please fill in all required fields correctly");
+      return;
+    }
+
+    const token = getAdminToken();
+    if (!token) {
+      toast.error("Please login to continue");
+      return;
+    }
+
+    setIsLoading(true);
     try {
       const formData = new FormData();
-      formData.append('name', newProduct.name);
-      formData.append('description', newProduct.description);
-      formData.append('pricePerDay', newProduct.pricePerDay);
-      formData.append('quantity', newProduct.quantity);
+      
+      // Add required fields
+      formData.append('name', newProduct.name.trim());
+      formData.append('description', newProduct.description.trim());
+      formData.append('pricePerDay', parseFloat(newProduct.pricePerDay));
+      formData.append('quantity', parseInt(newProduct.quantity));
       formData.append('category', newProduct.category);
       formData.append('availability', newProduct.availability);
       
+      // Add images if present
       if (imageFile) {
-        formData.append('productImage', imageFile);
+        imageFile.forEach((file, index) => {
+          formData.append('productImages', file); // Changed from 'images' to 'productImages' to match backend
+        });
       }
 
       const config = {
         headers: {
-          'Authorization': localStorage.getItem('adminToken'),
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
       };
 
-      if (editMode) {
-        await axios.put(
-          `${ADMIN_API_END_POINT}/products/${newProduct.id}`,
-          formData,
-          config
-        );
-      } else {
-        await axios.post(
-          `${ADMIN_API_END_POINT}/products/add`,
-          formData,
-          config
-        );
+      console.log('Sending product data:', {
+        name: newProduct.name,
+        description: newProduct.description,
+        pricePerDay: newProduct.pricePerDay,
+        quantity: newProduct.quantity,
+        category: newProduct.category,
+        availability: newProduct.availability,
+        imageCount: imageFile ? imageFile.length : 0
+      });
+
+      const endpoint = editMode 
+        ? `${ADMIN_PRODUCTS_API_END_POINT}/${newProduct.id}`
+        : `${ADMIN_PRODUCTS_API_END_POINT}/add`;
+
+      const response = editMode
+        ? await axios.put(endpoint, formData, config)
+        : await axios.post(endpoint, formData, config);
+
+      console.log('Product API Response:', response.data);
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Invalid response from server');
       }
 
-      // Refresh products list
       await fetchProducts();
-      
-      // Reset form
       setIsOpen(false);
       setEditMode(false);
       setImageFile(null);
@@ -142,34 +297,81 @@ const AdminProductPage = () => {
         name: "",
         description: "",
         pricePerDay: "",
-        images: [""],
+        images: [],
         quantity: "",
         category: "Milk",
         availability: true,
       });
+      setFormErrors({});
 
       toast.success(`Product ${editMode ? 'updated' : 'added'} successfully`);
     } catch (error) {
-      console.error("Error saving product:", error);
-      toast.error(error.response?.data?.message || "Error saving product");
+      console.error("Error saving product:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      if (error.response?.status === 400) {
+        const errorMessage = error.response.data?.message || "Invalid product data";
+        toast.error(errorMessage);
+      } else if (error.response?.status === 401) {
+        toast.error("Session expired. Please login again.");
+        window.location.href = '/admin/login';
+      } else if (error.response?.status === 500) {
+        toast.error("Server error. Please try again later.");
+      } else if (!error.response) {
+        toast.error("No response from server. Please check your connection.");
+      } else {
+        toast.error(error.response?.data?.message || "Error saving product");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const removeProduct = async (id) => {
     try {
-      await axios.delete(`${ADMIN_API_END_POINT}/products/${id}`, axiosConfig);
+      const token = getAdminToken();
+      if (!token) {
+        toast.error("Please login to continue");
+        return;
+      }
+
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        withCredentials: true
+      };
+
+      await axios.delete(`${ADMIN_PRODUCTS_API_END_POINT}/${id}`, config);
       await fetchProducts();
+      toast.success("Product deleted successfully");
     } catch (error) {
       console.error("Error deleting product:", error);
-      alert(error.response?.data?.message || "Error deleting product");
+      
+      if (error.response?.status === 401) {
+        toast.error("Session expired. Please login again.");
+      } else if (error.response?.status === 500) {
+        toast.error("Server error. Please try again later.");
+      } else if (error.request) {
+        toast.error("No response from server. Please check your connection.");
+      } else {
+        toast.error(error.response?.data?.message || "Error deleting product");
+      }
     }
   };
 
   const handleEdit = (product) => {
+    // Process image URL for editing
+    let imageUrl = product.images?.[0] || "";
+    // Don't modify image URL for preview/display purposes
+    
     setNewProduct({
       ...product,
       pricePerDay: product.pricePerDay || "",
-      images: [product.image || ""],
+      images: [imageUrl],
     });
     setEditMode(true);
     setIsOpen(true);
@@ -182,6 +384,11 @@ const AdminProductPage = () => {
 
   const handleCategoryChange = (value) => {
     setNewProduct((prev) => ({ ...prev, category: value }));
+  };
+
+  const validateForm = () => {
+    // Implement form validation logic here
+    return true; // Placeholder return, actual implementation needed
   };
 
   return (

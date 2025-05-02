@@ -1,17 +1,50 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+
+// Define backend URL
+const BACKEND_URL = 'http://localhost:5000';
+// Fix default image path - point to an image that definitely exists
+const defaultImage = "https://placehold.co/200x200?text=No+Image";
 
 const ProductCard = ({ product }) => {
   const [imageError, setImageError] = useState(false);
-  const defaultImage = "/images/default-product.png";
+
+  // Ensure image path includes backend URL when needed
+  useEffect(() => {
+    // Debug what images are coming in
+    console.log("Product received:", product);
+    console.log("Image sources:", product.images);
+  }, [product]);
 
   const handleImageError = () => {
+    console.error(`Image failed to load: ${imageError ? defaultImage : (product.images?.[0] || product.image || defaultImage)}`);
     if (!imageError) {
       setImageError(true);
     }
   };
 
-  const imageSource = imageError ? defaultImage : (product.images?.[0] || product.image || defaultImage);
+  // New approach to get image source
+  const getImageSource = () => {
+    if (imageError) return defaultImage;
+    
+    // Get raw image path
+    let imagePath = product.images?.[0] || product.image || defaultImage;
+    
+    // If it's an uploads path but doesn't have full URL, add it
+    if (imagePath && typeof imagePath === 'string') {
+      if (imagePath.startsWith('/uploads/')) {
+        return `${BACKEND_URL}${imagePath}`;
+      }
+      if (imagePath.startsWith('uploads/')) {
+        return `${BACKEND_URL}/${imagePath}`;
+      }
+    }
+    
+    return imagePath;
+  };
+
+  const imageSource = getImageSource();
+  console.log(`Product: ${product.name}, Final image source: ${imageSource}`);
 
   return (
     <Link
@@ -28,6 +61,11 @@ const ProductCard = ({ product }) => {
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             onError={handleImageError}
           />
+          
+          {/* Show image path for debugging */}
+          <div className="absolute bottom-0 left-0 bg-black/50 text-white text-xs p-1 max-w-full overflow-hidden">
+            {imageSource.slice(0, 30)}...
+          </div>
           
           {/* Status Badge */}
           <div className="absolute top-3 right-3">

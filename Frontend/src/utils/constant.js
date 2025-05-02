@@ -1,3 +1,7 @@
-export const USER_API_END_POINT = 'http://localhost:3000/api/v1/user';
-export const ADMIN_API_END_POINT = 'http://localhost:3000/api/v1/admin';
-export const GOOGLE_MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
+const BASE_URL = import.meta.env.VITE_BACKEND_URL;
+
+export const USER_API_END_POINT = `${BASE_URL}/api/v1/user`;
+export const ADMIN_API_END_POINT = `${BASE_URL}/api/v1/admin`;
+export const USER_PRODUCTS_API_END_POINT = `${BASE_URL}/api/v1/user/products`;
+export const ADMIN_PRODUCTS_API_END_POINT = `${BASE_URL}/api/v1/admin/products`;
+export const PUBLIC_PRODUCTS_API_END_POINT = `${BASE_URL}/api/v1/products`;
