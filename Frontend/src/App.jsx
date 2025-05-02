@@ -9,7 +9,7 @@ import ProductDetail from './components/ProductPage/ProductDetail';
 import Contacts from './components/Contacts/Contacts';
 import Login from './components/auth/Login';
 import Signup from './components/auth/Signup';
-import Profile from './components/ProfilePage/Profile';
+import Profile from './components/ProfilePage/profile';
 import Dashboard from './components/Dashboard/Dashboard';
 import AdminProductPage from './components/ProductPage/ProductPageAdmin';
 import UserManagement from './components/UserManagement/UserManagement';
