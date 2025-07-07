@@ -58,7 +58,7 @@ This is a **full-stack milk delivery system** where users can order milk and dai
    ```
 
 ## 🚀 Deployment
-- **Frontend:** Render
+- **Frontend:** Vercel
 - **Backend:** Render
 - **Database:** MongoDB Atlas
 
